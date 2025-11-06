@@ -132,7 +132,7 @@ func (ct *UserController) Login(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, echo.Map{
-		"message": "login success_",
+		"message": "login success",
 		"token":   token,
 	})
 }

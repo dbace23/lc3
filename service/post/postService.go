@@ -1,8 +1,8 @@
+// service/post/postService.go
 package postsvc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -33,8 +33,9 @@ func New(pr postrepo.Repo, lr likerepo.Repo, log activityrepo.Repo, jr jokerrepo
 
 func (s *service) Create(ctx context.Context, userID int64, req model.CreatePostReq) (*model.Post, error) {
 	if req.Title == "" {
-		return nil, errors.New("title is required")
+		return nil, ErrBadInput
 	}
+
 	var content string
 	if req.Content != nil {
 		content = *req.Content
@@ -43,7 +44,7 @@ func (s *service) Create(ctx context.Context, userID int64, req model.CreatePost
 	if s.jokeRepo != nil {
 		if joke, err := s.jokeRepo.FetchJoke(ctx); err == nil && joke != "" {
 			if content != "" {
-				content = content + "\n\n" + "💡 Joke of the day: " + joke
+				content += "\n\n" + "💡 Joke of the day: " + joke
 			} else {
 				content = "💡 Joke of the day: " + joke
 			}
@@ -76,8 +77,9 @@ func (s *service) List(ctx context.Context) ([]model.Post, error) {
 func (s *service) Detail(ctx context.Context, id int64) (map[string]any, error) {
 	post, err := s.pr.ByID(ctx, id)
 	if err != nil || post == nil {
-		return nil, errors.New("post not found")
+		return nil, ErrNotFound
 	}
+
 	likes, _ := s.lr.ListByPost(ctx, id)
 	count, _ := s.lr.CountByPost(ctx, id)
 
@@ -89,17 +91,22 @@ func (s *service) Detail(ctx context.Context, id int64) (map[string]any, error) 
 }
 
 func (s *service) Delete(ctx context.Context, id, userID int64) error {
+
 	ok, err := s.pr.DeleteByIDOwner(ctx, id, userID)
 	if err != nil {
 		return err
 	}
-	if !ok {
-		return errors.New("not owner or not found")
+	if ok {
+		_ = s.log.Log(ctx, model.Activity{
+			UserID:      userID,
+			Action:      "POST_DELETE",
+			Description: fmt.Sprintf("delete POST id=%d", id),
+		})
+		return nil
 	}
-	_ = s.log.Log(ctx, model.Activity{
-		UserID:      userID,
-		Action:      "POST_DELETE",
-		Description: fmt.Sprintf("delete POST id=%d", id),
-	})
-	return nil
+
+	if p, err := s.pr.ByID(ctx, id); err == nil && p != nil {
+		return ErrNotOwner
+	}
+	return ErrNotFound
 }
