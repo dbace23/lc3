@@ -78,7 +78,7 @@ func (ct *UserController) Register(c echo.Context) error {
 				"path", c.Path(),
 				"method", c.Request().Method,
 			)
-			return echo.NewHTTPError(http.StatusInternalServerError)
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 	}
 
