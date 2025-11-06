@@ -68,6 +68,8 @@ func main() {
 
 	// echo
 	e := echo.New()
+	echoServer.RegisterMiddlewares(e)
+	e.Validator = validation.New()
 
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(200, map[string]any{
@@ -75,8 +77,6 @@ func main() {
 			"message": "✅ Service is healthy and connected",
 		})
 	})
-	echoServer.RegisterMiddlewares(e)
-	e.Validator = validation.New()
 
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
@@ -88,5 +88,15 @@ func main() {
 		JWTSecret: cfg.JWTSecret,
 	})
 
-	e.Logger.Fatal(e.Start(":" + cfg.Port))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = cfg.Port
+	}
+	if port == "" {
+		port = "8080"
+	}
+
+	slog.Info("starting server", "PORT_env", os.Getenv("PORT"), "chosen_port", port)
+
+	e.Logger.Fatal(e.Start(":" + port))
 }
