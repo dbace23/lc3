@@ -37,6 +37,7 @@ import (
 )
 
 func main() {
+	secret := os.Getenv("JWT_SECRET")
 	cfg := config.Load()
 	ctx := context.Background()
 
@@ -64,7 +65,7 @@ func main() {
 	pc := controller.NewPostController(ps)
 	lc := controller.NewLikeController(ls)
 	ac := controller.NewActivityController(as)
-	uc := controller.NewUserController(aus, cfg.JWTSecret, slog.Default())
+	uc := controller.NewUserController(aus, secret, slog.Default())
 
 	// echo
 	e := echo.New()
@@ -85,7 +86,7 @@ func main() {
 		Post:      pc,
 		Like:      lc,
 		Activity:  ac,
-		JWTSecret: cfg.JWTSecret,
+		JWTSecret: secret,
 	})
 
 	port := os.Getenv("PORT")
