@@ -61,6 +61,10 @@ func main() {
 	as := activitysvc.New(ar)
 	aus := authsvc.New(ur)
 
+	slog.Info("JWT secret check",
+    "secret_length", len(cfg.JWTSecret),
+    "secret_preview", cfg.JWTSecret[:min(6, len(cfg.JWTSecret))],
+)
 	// controllers
 	pc := controller.NewPostController(ps)
 	lc := controller.NewLikeController(ls)
