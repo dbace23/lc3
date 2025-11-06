@@ -15,9 +15,10 @@ import (
 )
 
 var (
-	ErrEmailTaken   = errors.New("email already registered")
-	ErrBadInput     = errors.New("bad input")
-	ErrInvalidCreds = errors.New("invalid credentials")
+	ErrEmailTaken    = errors.New("email already registered")
+	ErrBadInput      = errors.New("bad input")
+	ErrInvalidCreds  = errors.New("invalid credentials")
+	ErrUsernameTaken = errors.New("username already taken")
 )
 
 type Service interface {
@@ -76,7 +77,7 @@ func (s *service) Login(ctx context.Context, req model.LoginReq, secret string) 
 	return u, token, nil
 }
 
-// ////
+
 func isDuplicateErr(err error) bool {
 
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
