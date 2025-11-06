@@ -9,7 +9,7 @@ func Load() App {
 	cfg := App{
 		Port:         getenv("APP_PORT", "8080"),
 		DatabaseURL:  must("DATABASE_URL"),
-		JWTSecret:    must("JWT_SECRET"),
+		JWTSecret:    getenv("JWT_SECRET", "local_dev_secret"),
 		ApiNinjasKey: os.Getenv("API_NINJAS_KEY"),
 		Env:          getenv("APP_ENV", "dev"),
 	}
