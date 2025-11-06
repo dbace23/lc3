@@ -15,7 +15,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	echoServer "instagram/app/echoServer"
 	"instagram/app/echoServer/controller"
 	"instagram/app/echoServer/validation"
@@ -31,7 +30,6 @@ import (
 	postsvc "instagram/service/post"
 	"instagram/util/database"
 	"log/slog"
-	"net/http"
 	"os"
 
 	"github.com/labstack/echo/v4"
@@ -73,31 +71,6 @@ func main() {
 	echoServer.RegisterMiddlewares(e)
 	e.Validator = validation.New()
 
-	e.HTTPErrorHandler = func(err error, c echo.Context) {
-		code := http.StatusInternalServerError
-		msg := err.Error()
-
-		var he *echo.HTTPError
-		if errors.As(err, &he) {
-			code = he.Code
-			if m, ok := he.Message.(string); ok {
-				msg = m
-			} else {
-				msg = he.Error()
-			}
-		}
-
-		slog.Error("request failed",
-			"method", c.Request().Method,
-			"path", c.Path(),
-			"status", code,
-			"err", msg,
-		)
-
-		_ = c.JSON(code, echo.Map{
-			"message": msg,
-		})
-	}
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(200, map[string]any{
 			"status":  "ok",
