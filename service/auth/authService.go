@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+
 	"github.com/jackc/pgerrcode"
 
 	"instagram/model"
@@ -11,9 +12,7 @@ import (
 	"instagram/util/hash"
 	jwtutil "instagram/util/jwt"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgconn"
-	"gorm.io/gorm"
 )
 
 var (
@@ -47,7 +46,6 @@ func (s *service) Register(ctx context.Context, req model.RegisterReq, secret st
 	}
 
 	if err := s.ur.Create(ctx, u); err != nil {
-		// Map DB duplicate → domain errors
 		if derr := mapDuplicateErr(err); derr != nil {
 			return nil, "", derr
 		}
@@ -93,22 +91,4 @@ func (s *service) Login(ctx context.Context, req model.LoginReq, secret string) 
 		return nil, "", err
 	}
 	return u, token, nil
-}
-
-func isDuplicateErr(err error) bool {
-
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return true
-	}
-	// Postgres
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return true
-	}
-	//MySQL
-	var myErr *mysql.MySQLError
-	if errors.As(err, &myErr) && myErr.Number == 1062 {
-		return true
-	}
-	return false
 }
