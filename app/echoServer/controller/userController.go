@@ -44,19 +44,17 @@ func (ct *UserController) Register(c echo.Context) error {
 	// Bind
 	if err := c.Bind(&req); err != nil {
 		ct.log.Warn("bind failed", "path", c.Path(), "err", err)
-		// Mask to client; message text is ignored by your global HTTPErrorHandler anyway
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
 	}
 
 	// Validate
 	if err := c.Validate(&req); err != nil {
 		ct.log.Warn("validation failed", "path", c.Path(), "err", err)
-		// Let global handler render {"message":"validation error"}
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
 
 	// Business logic
-	u, token, err := ct.s.Register(c.Request().Context(), req, ct.jwtSecret)
+	u, _, err := ct.s.Register(c.Request().Context(), req, ct.jwtSecret)
 	if err != nil {
 		switch {
 		case errors.Is(err, authsvc.ErrEmailTaken):
@@ -78,15 +76,14 @@ func (ct *UserController) Register(c echo.Context) error {
 				"path", c.Path(),
 				"method", c.Request().Method,
 			)
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+			return echo.NewHTTPError(http.StatusInternalServerError, "register failed")
 		}
 	}
 
 	// Success
 	return c.JSON(http.StatusCreated, echo.Map{
 		"message": "registered",
-		"user":    u,     // PasswordHash
-		"token":   token, // JWT
+		"user":    u,
 	})
 }
 
@@ -114,7 +111,7 @@ func (ct *UserController) Login(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
 
-	u, token, err := ct.s.Login(c.Request().Context(), req, ct.jwtSecret)
+	_, token, err := ct.s.Login(c.Request().Context(), req, ct.jwtSecret)
 	if err != nil {
 		switch {
 		case errors.Is(err, authsvc.ErrInvalidCreds):
@@ -135,8 +132,7 @@ func (ct *UserController) Login(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, echo.Map{
-		"message": "login success",
-		"user":    u,
+		"message": "login success_",
 		"token":   token,
 	})
 }
