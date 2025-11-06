@@ -83,7 +83,7 @@ func (s *service) Login(ctx context.Context, req model.LoginReq, secret string) 
 	if err != nil {
 		return nil, "", ErrInvalidCreds
 	}
-	if !hash.Check(req.Password, u.PasswordHash) {
+	if !hash.Check(u.PasswordHash, req.Password) {
 		return nil, "", ErrInvalidCreds
 	}
 	token, err := jwtutil.Issue(secret, u.ID, "user", 24)
