@@ -68,12 +68,13 @@ func main() {
 
 	// echo
 	e := echo.New()
+
 	e.GET("/health", func(c echo.Context) error {
-	return c.JSON(200, map[string]any{
-		"status":  "ok",
-		"message": "✅ Service is healthy and connected",
+		return c.JSON(200, map[string]any{
+			"status":  "ok",
+			"message": "✅ Service is healthy and connected",
+		})
 	})
-})
 	echoServer.RegisterMiddlewares(e)
 	e.Validator = validation.New()
 
