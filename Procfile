@@ -1,1 +1,1 @@
-web: bin/instagram
+web: ./server

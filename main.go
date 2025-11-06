@@ -15,7 +15,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	echoServer "instagram/app/echoServer"
 	"instagram/app/echoServer/controller"
 	"instagram/app/echoServer/validation"
@@ -31,7 +30,6 @@ import (
 	postsvc "instagram/service/post"
 	"instagram/util/database"
 	"log/slog"
-	"net/http"
 	"os"
 
 	"github.com/labstack/echo/v4"
@@ -72,35 +70,6 @@ func main() {
 	e := echo.New()
 	echoServer.RegisterMiddlewares(e)
 	e.Validator = validation.New()
-
-	e.HTTPErrorHandler = func(err error, c echo.Context) {
-		req := c.Request()
-		path := req.URL.Path
-		method := req.Method
-
-		var he *echo.HTTPError
-		if errors.As(err, &he) {
-
-			if he.Code == http.StatusBadRequest {
-				slog.Warn("bad request / validation", "method", method, "path", path, "err", he.Error())
-				_ = c.JSON(http.StatusBadRequest, echo.Map{"message": "validation error"})
-				return
-			}
-
-			if he.Code >= 400 && he.Code < 500 {
-				slog.Warn("client error", "code", he.Code, "method", method, "path", path, "err", he.Error())
-				_ = c.JSON(he.Code, echo.Map{"message": http.StatusText(he.Code)})
-				return
-			}
-
-			slog.Error("server error", "code", he.Code, "method", method, "path", path, "err", he.Error())
-			_ = c.JSON(http.StatusInternalServerError, echo.Map{"message": "internal server error"})
-			return
-		}
-
-		slog.Error("unhandled error", "method", method, "path", path, "err", err)
-		_ = c.JSON(http.StatusInternalServerError, echo.Map{"message": "internal server error"})
-	}
 
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(200, map[string]any{

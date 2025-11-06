@@ -60,13 +60,13 @@ func (ct *UserController) Register(c echo.Context) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, authsvc.ErrEmailTaken):
-			// 409 for email duplicate
+			// 409
 			return echo.NewHTTPError(http.StatusConflict, "email already registered")
 		case errors.Is(err, authsvc.ErrUsernameTaken):
-			// 409 for username duplicate
+			// 409
 			return echo.NewHTTPError(http.StatusConflict, "username already taken")
 		case errors.Is(err, authsvc.ErrBadInput):
-			// 400 for malformed/invalid business input (details logged only)
+			// 400
 			ct.log.Warn("bad input", "path", c.Path(), "err", err)
 			return echo.NewHTTPError(http.StatusBadRequest)
 		default:
