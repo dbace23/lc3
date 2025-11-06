@@ -37,7 +37,7 @@ import (
 )
 
 func main() {
-	secret := os.Getenv("JWT_SECRET")
+
 	cfg := config.Load()
 	ctx := context.Background()
 
@@ -61,15 +61,11 @@ func main() {
 	as := activitysvc.New(ar)
 	aus := authsvc.New(ur)
 
-	slog.Info("JWT secret check",
-    "secret_length", len(cfg.JWTSecret),
-    "secret_preview", cfg.JWTSecret[:min(6, len(cfg.JWTSecret))],
-)
 	// controllers
 	pc := controller.NewPostController(ps)
 	lc := controller.NewLikeController(ls)
 	ac := controller.NewActivityController(as)
-	uc := controller.NewUserController(aus, secret, slog.Default())
+	uc := controller.NewUserController(aus, cfg.JWTSecret, slog.Default())
 
 	// echo
 	e := echo.New()
@@ -79,7 +75,7 @@ func main() {
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(200, map[string]any{
 			"status":  "ok",
-			"message": "✅ Service is healthy and connected",
+			"message": "Service is healthy and connected",
 		})
 	})
 
@@ -90,7 +86,7 @@ func main() {
 		Post:      pc,
 		Like:      lc,
 		Activity:  ac,
-		JWTSecret: secret,
+		JWTSecret: cfg.JWTSecret,
 	})
 
 	port := os.Getenv("PORT")

@@ -27,12 +27,17 @@ func Register(e *echo.Echo, c C) {
 	auth := e.Group("/v1")
 
 	auth.Use(echojwt.WithConfig(echojwt.Config{
-		SigningKey:    []byte(c.JWTSecret),
-		TokenLookup:   "header:Authorization",
-		NewClaimsFunc: func(c echo.Context) jwt.Claims { return jwt.MapClaims{} },
-		ErrorHandler: func(c echo.Context, err error) error {
-			return c.JSON(401, map[string]any{
+		SigningKey:  []byte(c.JWTSecret),
+		TokenLookup: "header:Authorization",
+		NewClaimsFunc: func(c echo.Context) jwt.Claims {
+			return jwt.MapClaims{}
+		},
+		ErrorHandler: func(ctx echo.Context, err error) error {
+			hdr := ctx.Request().Header.Get("Authorization")
+			return ctx.JSON(401, echo.Map{
 				"message": "invalid or missing token",
+				"error":   err.Error(),
+				"got":     hdr,
 			})
 		},
 	}))
