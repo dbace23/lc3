@@ -49,7 +49,7 @@ func (r *repo) DeleteByIDOwner(ctx context.Context, id, ownerID int64) (bool, er
 	cmd, err := r.db.Pool.Exec(ctx, `
 		DELETE FROM likes 
 		WHERE 
-			id=$1 AND user_id=$2`, id, ownerID)
+			post_id=$1 AND user_id=$2`, id, ownerID)
 	return cmd.RowsAffected() > 0, err
 }
 
