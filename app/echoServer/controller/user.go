@@ -39,35 +39,35 @@ func NewUserController(s authsvc.Service, secret string, log *slog.Logger) *User
 // @Failure      409 {object} map[string]any "email already registered"
 // @Failure      500 {object} map[string]any "internal server error"
 // @Router       /v1/users/register [post]
+// Register a new user
 func (ct *UserController) Register(c echo.Context) error {
 	var req model.RegisterReq
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{"message": "invalid body"})
+		ct.log.Warn("bind failed", "path", c.Path(), "err", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
 	}
 	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{
-			"message": "validation error",
-			"errors":  err.Error(),
-		})
+		ct.log.Warn("validation failed", "path", c.Path(), "err", err)
+
+		return echo.NewHTTPError(http.StatusBadRequest)
 	}
+
 	u, token, err := ct.s.Register(c.Request().Context(), req, ct.jwtSecret)
 	if err != nil {
 		switch {
 		case errors.Is(err, authsvc.ErrEmailTaken):
-			return c.JSON(http.StatusConflict, echo.Map{"message": "email already registered"})
+			return echo.NewHTTPError(http.StatusConflict, "email already registered")
 		case errors.Is(err, authsvc.ErrBadInput):
-			return c.JSON(http.StatusBadRequest, echo.Map{"message": err.Error()})
+
+			ct.log.Warn("bad input", "path", c.Path(), "err", err)
+			return echo.NewHTTPError(http.StatusBadRequest)
 		default:
 			rid := c.Response().Header().Get(echo.HeaderXRequestID)
-			ct.log.Error("register failed",
-				slog.Any("err", err),
-				slog.String("req_id", rid),
-				slog.String("path", c.Path()),
-				slog.String("method", c.Request().Method),
-			)
-			return c.JSON(http.StatusInternalServerError, echo.Map{"message": "internal server error"})
+			ct.log.Error("register failed", "err", err, "req_id", rid, "path", c.Path(), "method", c.Request().Method)
+			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 	}
+
 	return c.JSON(http.StatusCreated, echo.Map{
 		"message": "registered",
 		"user":    u,
@@ -90,32 +90,29 @@ func (ct *UserController) Register(c echo.Context) error {
 func (ct *UserController) Login(c echo.Context) error {
 	var req model.LoginReq
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{"message": "invalid body"})
+		ct.log.Warn("bind failed", "path", c.Path(), "err", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
 	}
 	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{
-			"message": "validation error",
-			"errors":  err.Error(),
-		})
+		ct.log.Warn("validation failed", "path", c.Path(), "err", err)
+		return echo.NewHTTPError(http.StatusBadRequest)
 	}
+
 	u, token, err := ct.s.Login(c.Request().Context(), req, ct.jwtSecret)
 	if err != nil {
 		switch {
 		case errors.Is(err, authsvc.ErrInvalidCreds):
-			return c.JSON(http.StatusUnauthorized, echo.Map{"message": "invalid email or password"})
+			return echo.NewHTTPError(http.StatusUnauthorized, "invalid email or password")
 		case errors.Is(err, authsvc.ErrBadInput):
-			return c.JSON(http.StatusBadRequest, echo.Map{"message": err.Error()})
+			ct.log.Warn("bad input", "path", c.Path(), "err", err)
+			return echo.NewHTTPError(http.StatusBadRequest)
 		default:
 			rid := c.Response().Header().Get(echo.HeaderXRequestID)
-			ct.log.Error("login failed",
-				slog.Any("err", err),
-				slog.String("req_id", rid),
-				slog.String("path", c.Path()),
-				slog.String("method", c.Request().Method),
-			)
-			return c.JSON(http.StatusInternalServerError, echo.Map{"message": "internal server error"})
+			ct.log.Error("login failed", "err", err, "req_id", rid, "path", c.Path(), "method", c.Request().Method)
+			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 	}
+
 	return c.JSON(http.StatusOK, echo.Map{
 		"message": "login success",
 		"user":    u,
