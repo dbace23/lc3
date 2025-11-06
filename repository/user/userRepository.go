@@ -19,8 +19,8 @@ func New(db *database.DB) Repo { return &repo{db} }
 
 func (r *repo) Create(ctx context.Context, u *model.User) error {
 	return r.db.Pool.QueryRow(ctx, `
-		INSERT INTO users(first_name, last_name, email, username, password_hash, age, address)
-		VALUES ($1,$2,$3,$4,$5,18,'-') RETURNING id, created_at`,
+		INSERT INTO users(first_name, last_name, email, username, password_hash)
+		VALUES ($1,$2,$3,$4,$5) RETURNING id, created_at`,
 		u.FirstName, u.LastName, u.Email, u.Username, u.PasswordHash,
 	).Scan(&u.ID, &u.CreatedAt)
 }
