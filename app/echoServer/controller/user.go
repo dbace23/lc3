@@ -1,3 +1,4 @@
+// app/echoServer/controller/userController.go
 package controller
 
 import (
@@ -25,53 +26,67 @@ func NewUserController(s authsvc.Service, secret string, log *slog.Logger) *User
 	}
 }
 
-// app/echoServer/controller/userController.go
-
 // Register a new user
 // @Summary      Register user
-// @Description  Register a new user with email validation
+// @Description  Register a new user with email/username uniqueness and validation
 // @Tags         users
 // @Accept       json
 // @Produce      json
 // @Param        payload  body  model.RegisterReq  true  "Register payload"
 // @Success      201  {object}  map[string]any
 // @Failure      400  {object}  map[string]any
-// @Failure      409 {object} map[string]any "email already registered"
-// @Failure      500 {object} map[string]any "internal server error"
+// @Failure      409  {object}  map[string]any "email/username already taken"
+// @Failure      500  {object}  map[string]any "internal server error"
 // @Router       /v1/users/register [post]
-// Register a new user
 func (ct *UserController) Register(c echo.Context) error {
 	var req model.RegisterReq
+
+	// Bind
 	if err := c.Bind(&req); err != nil {
 		ct.log.Warn("bind failed", "path", c.Path(), "err", err)
+		// Mask to client; message text is ignored by your global HTTPErrorHandler anyway
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
 	}
+
+	// Validate
 	if err := c.Validate(&req); err != nil {
 		ct.log.Warn("validation failed", "path", c.Path(), "err", err)
-
+		// Let global handler render {"message":"validation error"}
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
 
+	// Business logic
 	u, token, err := ct.s.Register(c.Request().Context(), req, ct.jwtSecret)
 	if err != nil {
 		switch {
 		case errors.Is(err, authsvc.ErrEmailTaken):
+			// 409 for email duplicate
 			return echo.NewHTTPError(http.StatusConflict, "email already registered")
+		case errors.Is(err, authsvc.ErrUsernameTaken):
+			// 409 for username duplicate
+			return echo.NewHTTPError(http.StatusConflict, "username already taken")
 		case errors.Is(err, authsvc.ErrBadInput):
-
+			// 400 for malformed/invalid business input (details logged only)
 			ct.log.Warn("bad input", "path", c.Path(), "err", err)
 			return echo.NewHTTPError(http.StatusBadRequest)
 		default:
+			// Unknown → 500 (details only in logs)
 			rid := c.Response().Header().Get(echo.HeaderXRequestID)
-			ct.log.Error("register failed", "err", err, "req_id", rid, "path", c.Path(), "method", c.Request().Method)
+			ct.log.Error("register failed",
+				"err", err,
+				"req_id", rid,
+				"path", c.Path(),
+				"method", c.Request().Method,
+			)
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 	}
 
+	// Success
 	return c.JSON(http.StatusCreated, echo.Map{
 		"message": "registered",
-		"user":    u,
-		"token":   token,
+		"user":    u,     // PasswordHash
+		"token":   token, // JWT
 	})
 }
 
@@ -84,11 +99,12 @@ func (ct *UserController) Register(c echo.Context) error {
 // @Param        payload  body  model.LoginReq  true  "Login payload"
 // @Success      200  {object}  map[string]any
 // @Failure      400  {object}  map[string]any
-// @Failure      401 {object} map[string]any
-// @Failure      500 {object} map[string]any
+// @Failure      401  {object}  map[string]any
+// @Failure      500  {object}  map[string]any
 // @Router       /v1/users/login [post]
 func (ct *UserController) Login(c echo.Context) error {
 	var req model.LoginReq
+
 	if err := c.Bind(&req); err != nil {
 		ct.log.Warn("bind failed", "path", c.Path(), "err", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
@@ -108,7 +124,12 @@ func (ct *UserController) Login(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest)
 		default:
 			rid := c.Response().Header().Get(echo.HeaderXRequestID)
-			ct.log.Error("login failed", "err", err, "req_id", rid, "path", c.Path(), "method", c.Request().Method)
+			ct.log.Error("login failed",
+				"err", err,
+				"req_id", rid,
+				"path", c.Path(),
+				"method", c.Request().Method,
+			)
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 	}
