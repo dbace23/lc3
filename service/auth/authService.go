@@ -3,6 +3,7 @@ package authsvc
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"instagram/model"
 	userrepo "instagram/repository/user"
@@ -45,8 +46,9 @@ func (s *service) Register(ctx context.Context, req model.RegisterReq, secret st
 	}
 
 	if err := s.ur.Create(ctx, u); err != nil {
-		if isDuplicateErr(err) {
-			return nil, "", ErrEmailTaken
+		// Map DB duplicate → domain errors
+		if derr := mapDuplicateErr(err); derr != nil {
+			return nil, "", derr
 		}
 		return nil, "", err
 	}
@@ -55,28 +57,43 @@ func (s *service) Register(ctx context.Context, req model.RegisterReq, secret st
 	if err != nil {
 		return nil, "", err
 	}
-
 	return u, token, nil
+}
+
+func mapDuplicateErr(err error) error {
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		cn := strings.ToLower(pgErr.ConstraintName)
+		msg := strings.ToLower(pgErr.Message)
+		// prefer named constraints if you created them:
+		//   users_email_key, users_username_key
+		if strings.Contains(cn, "users_email") || strings.Contains(msg, "email") {
+			return ErrEmailTaken
+		}
+		if strings.Contains(cn, "users_username") || strings.Contains(msg, "username") {
+			return ErrUsernameTaken
+		}
+		return ErrBadInput
+	}
+
+	return nil
 }
 
 func (s *service) Login(ctx context.Context, req model.LoginReq, secret string) (*model.User, string, error) {
 	u, err := s.ur.ByEmail(ctx, req.Email)
 	if err != nil {
-		return nil, "", errors.New("invalid credentials")
+		return nil, "", ErrInvalidCreds
 	}
-
 	if !hash.Check(req.Password, u.PasswordHash) {
-		return nil, "", errors.New("invalid credentials")
+		return nil, "", ErrInvalidCreds
 	}
-
 	token, err := jwtutil.Issue(secret, u.ID, "user", 24)
 	if err != nil {
 		return nil, "", err
 	}
-
 	return u, token, nil
 }
-
 
 func isDuplicateErr(err error) bool {
 
