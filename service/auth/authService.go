@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"github.com/jackc/pgerrcode"
 
 	"instagram/model"
 	userrepo "instagram/repository/user"
@@ -66,8 +67,7 @@ func mapDuplicateErr(err error) error {
 	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 		cn := strings.ToLower(pgErr.ConstraintName)
 		msg := strings.ToLower(pgErr.Message)
-		// prefer named constraints if you created them:
-		//   users_email_key, users_username_key
+
 		if strings.Contains(cn, "users_email") || strings.Contains(msg, "email") {
 			return ErrEmailTaken
 		}
